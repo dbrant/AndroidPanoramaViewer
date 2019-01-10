@@ -64,8 +64,8 @@ public class MediaLoader {
     /**
      * The 360 x 180 sphere has 15 degree quads. Increase these if lines in your video look wavy.
      */
-    private static final int DEFAULT_SPHERE_ROWS = 12;
-    private static final int DEFAULT_SPHERE_COLUMNS = 24;
+    private static final int DEFAULT_SPHERE_ROWS = 32;
+    private static final int DEFAULT_SPHERE_COLUMNS = 32;
 
     private Context context;
 
