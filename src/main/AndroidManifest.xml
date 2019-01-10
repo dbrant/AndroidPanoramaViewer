@@ -14,7 +14,10 @@
   <uses-permission android:name="android.permission.INTERNET" />
 
   <!-- largeheap=true is required for loading 8k x 8k images. -->
-  <application android:largeHeap="true">
+  <application
+      android:largeHeap="true"
+      android:supportsRtl="true"
+      android:theme="@style/AppTheme">
     <!-- This is a 2D Version of the video player. -->
     <activity
         android:name=".MainActivity"

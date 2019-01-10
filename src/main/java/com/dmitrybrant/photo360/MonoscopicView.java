@@ -72,7 +72,7 @@ public final class MonoscopicView extends GLSurfaceView {
    */
   public void initialize(VideoUiView uiView) {
     this.uiView = uiView;
-    mediaLoader = new MediaLoader();
+    mediaLoader = new MediaLoader(getContext());
 
     // Configure OpenGL.
     renderer = new Renderer(uiView, mediaLoader);

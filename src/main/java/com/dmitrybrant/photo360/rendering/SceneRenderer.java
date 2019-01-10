@@ -120,6 +120,10 @@ public final class SceneRenderer {
   public static Pair<SceneRenderer, VideoUiView> createForVR(Context context, ViewGroup parent) {
     CanvasQuad canvasQuad = new CanvasQuad();
     VideoUiView videoUiView = VideoUiView.createForOpenGl(context, parent, canvasQuad);
+
+    // TODO: re-enable by default when ready
+    videoUiView.setAlpha(0);
+
     OnFrameAvailableListener externalFrameListener = videoUiView.getFrameListener();
 
     SceneRenderer scene = new SceneRenderer(
@@ -325,18 +329,14 @@ public final class SceneRenderer {
   /** Uses Android's animation system to fade in/out when the user wants to show/hide the UI. */
   @AnyThread
   public void toggleUi() {
-    // This can be trigged via a controller action so switch to main thread to manipulate the View.
-    uiHandler.post(
-        new Runnable() {
-          @Override
-          public void run() {
-            if (videoUiView.getAlpha() == 0) {
-              videoUiView.animate().alpha(1).start();
-            } else {
-              videoUiView.animate().alpha(0).start();
-            }
-          }
-        });
+    // This can be triggered via a controller action so switch to main thread to manipulate the View.
+    uiHandler.post(() -> {
+      if (videoUiView.getAlpha() == 0) {
+        videoUiView.animate().alpha(1).start();
+      } else {
+        videoUiView.animate().alpha(0).start();
+      }
+    });
   }
 
   /**

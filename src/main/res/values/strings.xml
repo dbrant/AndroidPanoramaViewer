@@ -1,5 +1,5 @@
 <resources>
-  <string name="app_name">360 Video Player</string>
+  <string name="app_name">Panoramic media viewer</string>
   <string name="enter_vr_label">Enter VR mode</string>
   <string name="exit_vr_label">Exit VR mode</string>
   <string name="pause_label">Pause video</string>
