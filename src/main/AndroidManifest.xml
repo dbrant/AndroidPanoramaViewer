@@ -55,6 +55,7 @@
       <!-- This Activity only shows up in Daydream Home and not the 2D Launcher. -->
       <intent-filter>
         <action android:name="android.intent.action.MAIN" />
+          <category android:name="com.google.intent.category.CARDBOARD" />
         <category android:name="com.google.intent.category.DAYDREAM"/>
       </intent-filter>
     </activity>
