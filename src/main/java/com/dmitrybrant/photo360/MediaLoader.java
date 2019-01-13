@@ -1,4 +1,7 @@
 /*
+ * Copyright 2019 Dmitry Brant.
+ *
+ * Based loosely on the Google VR SDK sample apps.
  * Copyright 2017 Google Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,6 +26,7 @@ import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
+import android.graphics.Rect;
 import android.media.MediaPlayer;
 import android.net.Uri;
 import android.os.AsyncTask;
@@ -33,8 +37,11 @@ import android.util.Log;
 import android.view.Surface;
 
 import com.dmitrybrant.photo360.rendering.Mesh;
+import com.dmitrybrant.photo360.rendering.PhotoSphereTools;
 import com.dmitrybrant.photo360.rendering.SceneRenderer;
+import com.dmitrybrant.photo360.rendering.Utils;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URLConnection;
@@ -76,6 +83,7 @@ public class MediaLoader {
     private MediaPlayer mediaPlayer;
     // This sample also supports loading images.
     private Bitmap mediaImage;
+    private PhotoSphereTools.PhotoSphereData photoSphereData;
     // If the video or image fails to load, a placeholder panorama is rendered with error text.
     private String errorText;
 
@@ -120,7 +128,8 @@ public class MediaLoader {
 
         @Override
         protected Void doInBackground(Intent... intent) {
-            String defaultUrl = "https://upload.wikimedia.org/wikipedia/commons/thumb/7/72/MK_30645-58_Stadtschloss_Wiesbaden.jpg/1280px-MK_30645-58_Stadtschloss_Wiesbaden.jpg";
+            //String defaultUrl = "https://upload.wikimedia.org/wikipedia/commons/thumb/7/72/MK_30645-58_Stadtschloss_Wiesbaden.jpg/1280px-MK_30645-58_Stadtschloss_Wiesbaden.jpg";
+            String defaultUrl = "http://rivendell.dmitrybrant.com/pano1.jpg";
 
             Uri uri = intent != null && intent.length > 0 && intent[0].getData() != null ? intent[0].getData() : Uri.parse(defaultUrl);
             int stereoFormat = intent != null && intent.length > 0 ? intent[0].getIntExtra(MEDIA_FORMAT_KEY, Mesh.MEDIA_MONOSCOPIC) : Mesh.MEDIA_MONOSCOPIC;
@@ -134,22 +143,28 @@ public class MediaLoader {
                     DEFAULT_SPHERE_VERTICAL_DEGREES, DEFAULT_SPHERE_HORIZONTAL_DEGREES,
                     stereoFormat);
 
+            InputStream stream = null;
+            Response response = null;
             try {
-                InputStream stream = null;
                 if ("http".equals(uri.getScheme()) || "https".equals(uri.getScheme())) {
                     OkHttpClient client = new OkHttpClient();
                     Request request = new Request.Builder().url(uri.toString()).build();
-                    Response response = client.newCall(request).execute();
-
-                    // TODO: figure out how to NOT need to read the whole file at once.
-                    stream = response.body().byteStream(); // new ByteArrayInputStream(response.body().bytes());
+                    response = client.newCall(request).execute();
                 }
 
                 String type = URLConnection.guessContentTypeFromName(uri.getPath());
                 if (type == null) {
                     throw new InvalidParameterException("Unknown file type: " + uri);
                 } else if (type.startsWith("image")) {
+
+                    // TODO: figure out how to NOT need to read the whole file at once.
+                    byte[] bytes = response.body().bytes();
+                    //stream = response.body().byteStream();
+                    stream = new ByteArrayInputStream(bytes);
+
                     mediaImage = BitmapFactory.decodeStream(stream);
+                    photoSphereData = PhotoSphereTools.getPhotoSphereData(bytes);
+
                 } else if (type.startsWith("video")) {
                     MediaPlayer mp = MediaPlayer.create(context, uri);
                     synchronized (MediaLoader.this) {
@@ -159,6 +174,8 @@ public class MediaLoader {
                 }
             } catch (IOException | InvalidParameterException e) {
                 Log.e(TAG, errorText);
+            } finally {
+                Utils.closeSilently(stream);
             }
 
             displayWhenReady();
@@ -219,11 +236,28 @@ public class MediaLoader {
             // a bitmap in the background without stalling the GL thread. If the Mesh used a standard
             // GL_TEXTURE_2D, then it's possible to stall the GL thread for 100+ ms during the
             // glTexImage2D call when loading 4k x 4k panoramas and copying the bitmap's data.
-            displaySurface = sceneRenderer.createDisplay(
-                    mediaImage.getWidth(), mediaImage.getHeight(), mesh);
-            Canvas c = displaySurface.lockCanvas(null);
-            c.drawBitmap(mediaImage, 0, 0, null);
-            displaySurface.unlockCanvasAndPost(c);
+            if (photoSphereData != null) {
+                final int maxWidth = 4096;
+                float scale = (float) photoSphereData.fullPanoWidthPixels / maxWidth;
+
+                displaySurface = sceneRenderer.createDisplay((int) ((float) photoSphereData.fullPanoWidthPixels / scale),
+                        (int) ((float) photoSphereData.fullPanoHeightPixels / scale), mesh);
+                Canvas c = displaySurface.lockCanvas(null);
+
+                Rect src = new Rect(0, 0, mediaImage.getWidth(), mediaImage.getHeight());
+                Rect dst = new Rect((int) ((float) photoSphereData.croppedAreaLeftPixels / scale),
+                        (int) ((float) photoSphereData.croppedAreaTopPixels / scale),
+                        (int) ((float) (photoSphereData.croppedAreaLeftPixels + photoSphereData.croppedAreaImageWidthPixels) / scale),
+                        (int) ((float) (photoSphereData.croppedAreaTopPixels + photoSphereData.croppedAreaImageHeightPixels) / scale));
+                c.drawBitmap(mediaImage, src, dst, null);
+
+                displaySurface.unlockCanvasAndPost(c);
+            } else {
+                displaySurface = sceneRenderer.createDisplay(mediaImage.getWidth(), mediaImage.getHeight(), mesh);
+                Canvas c = displaySurface.lockCanvas(null);
+                c.drawBitmap(mediaImage, 0, 0, null);
+                displaySurface.unlockCanvasAndPost(c);
+            }
         } else {
             // Handle the error case by creating a placeholder panorama.
             mesh = Mesh.createUvSphere(

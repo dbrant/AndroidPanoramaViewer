@@ -1,4 +1,7 @@
 /*
+ * Copyright 2019 Dmitry Brant.
+ *
+ * Based loosely on the Google VR SDK sample apps.
  * Copyright 2017 Google Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
