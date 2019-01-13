@@ -236,6 +236,28 @@ public class MediaLoader {
             // a bitmap in the background without stalling the GL thread. If the Mesh used a standard
             // GL_TEXTURE_2D, then it's possible to stall the GL thread for 100+ ms during the
             // glTexImage2D call when loading 4k x 4k panoramas and copying the bitmap's data.
+
+            if (photoSphereData == null && (mediaImage.getHeight() * 2 != mediaImage.getWidth())) {
+                // If the image does not have an exact 2:1 aspect ratio, it likely means that it's a cropped
+                // panorama, but unfortunately it's lacking the precise photosphere data. In this case,
+                // let's build a fake photosphere object to make up for it, and place the image in the
+                // center of it.
+                photoSphereData = new PhotoSphereTools.PhotoSphereData();
+                photoSphereData.croppedAreaImageWidthPixels = mediaImage.getWidth();
+                photoSphereData.croppedAreaImageHeightPixels = mediaImage.getHeight();
+                if (mediaImage.getWidth() > mediaImage.getHeight() * 2) {
+                    photoSphereData.fullPanoWidthPixels = mediaImage.getWidth();
+                    photoSphereData.fullPanoHeightPixels = photoSphereData.fullPanoWidthPixels / 2;
+                    photoSphereData.croppedAreaLeftPixels = 0;
+                    photoSphereData.croppedAreaTopPixels = photoSphereData.fullPanoHeightPixels / 2 - mediaImage.getHeight() / 2;
+                } else {
+                    photoSphereData.fullPanoHeightPixels = mediaImage.getHeight();
+                    photoSphereData.fullPanoWidthPixels = photoSphereData.fullPanoHeightPixels * 2;
+                    photoSphereData.croppedAreaTopPixels = 0;
+                    photoSphereData.croppedAreaLeftPixels = photoSphereData.fullPanoWidthPixels / 2 - mediaImage.getWidth() / 2;
+                }
+            }
+
             if (photoSphereData != null) {
                 final int maxWidth = 4096;
                 float scale = (float) photoSphereData.fullPanoWidthPixels / maxWidth;

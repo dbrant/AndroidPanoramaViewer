@@ -102,7 +102,11 @@ public class PhotoSphereTools {
                             String nsStr = new String(bytes, bytePtr, zeroPos - bytePtr - 1, Charset.forName("ASCII"));
                             if (nsStr.contains("ns.adobe.com/xap")) {
                                 String xmpStr = new String(bytes, zeroPos + 1, segmentLength - (zeroPos - bytePtr) - 1, Charset.forName("UTF-8"));
-                                return new PhotoSphereData(xmpStr);
+                                PhotoSphereData data = new PhotoSphereData(xmpStr);
+                                // return it only if the data looks sane
+                                if (data.croppedAreaImageWidthPixels > 0 && data.croppedAreaImageHeightPixels > 0 && data.fullPanoWidthPixels > 0 && data.fullPanoHeightPixels > 0) {
+                                    return data;
+                                }
                             }
                         }
                     }
@@ -174,6 +178,9 @@ public class PhotoSphereTools {
         public int croppedAreaImageWidthPixels;
         public int croppedAreaImageHeightPixels;
         public float poseHeadingDegrees;
+
+        public PhotoSphereData() {
+        }
 
         public PhotoSphereData(@NonNull String xmpStr) {
             usePanoramaViewer = getBooleanAttribute(xmpStr, "GPano:UsePanoramaViewer");
