@@ -20,7 +20,7 @@ import static android.opengl.GLU.gluErrorString;
 
 import android.opengl.GLES11Ext;
 import android.opengl.GLES20;
-import android.support.annotation.Nullable;
+import androidx.annotation.Nullable;
 import android.text.TextUtils;
 import android.util.Log;
 
