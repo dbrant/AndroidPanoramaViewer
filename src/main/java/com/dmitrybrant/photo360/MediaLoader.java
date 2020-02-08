@@ -33,7 +33,7 @@ import android.os.AsyncTask;
 import androidx.annotation.AnyThread;
 import androidx.annotation.MainThread;
 import androidx.annotation.NonNull;
-import android.util.Log;
+
 import android.view.Surface;
 
 import com.dmitrybrant.photo360.rendering.Mesh;
@@ -84,8 +84,6 @@ public class MediaLoader {
     // This sample also supports loading images.
     private Bitmap mediaImage;
     private PhotoSphereTools.PhotoSphereData photoSphereData;
-    // If the video or image fails to load, a placeholder panorama is rendered with error text.
-    private String errorText;
 
     // Due to the slow loading media times, it's possible to tear down the app before mediaPlayer is
     // ready. In that case, abandon all the pending work.
@@ -173,7 +171,7 @@ public class MediaLoader {
                     }
                 }
             } catch (IOException | InvalidParameterException e) {
-                Log.e(TAG, errorText);
+                e.printStackTrace();
             } finally {
                 Utils.closeSilently(stream);
             }
@@ -215,7 +213,7 @@ public class MediaLoader {
             return;
         }
 
-        if ((errorText == null && mediaImage == null && mediaPlayer == null) || sceneRenderer == null) {
+        if ((mediaImage == null && mediaPlayer == null) || sceneRenderer == null) {
             // Wait for everything to be initialized.
             return;
         }
@@ -292,7 +290,7 @@ public class MediaLoader {
                     2 * DEFAULT_SURFACE_HEIGHT_PX, DEFAULT_SURFACE_HEIGHT_PX, mesh);
             // Render placeholder grid and error text.
             Canvas c = displaySurface.lockCanvas(null);
-            renderEquirectangularGrid(c, errorText);
+            renderEquirectangularGrid(c, context.getString(R.string.error_message));
             displaySurface.unlockCanvasAndPost(c);
         }
     }
