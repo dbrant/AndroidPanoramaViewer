@@ -17,6 +17,7 @@
   <application
       android:largeHeap="true"
       android:supportsRtl="true"
+      android:usesCleartextTraffic="true"
       android:theme="@style/AppTheme">
     <!-- This is a 2D Version of the video player. -->
     <activity
