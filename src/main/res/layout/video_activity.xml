@@ -24,6 +24,7 @@
         android:layout_height="wrap_content"
         android:layout_gravity="bottom|end"
         app:backgroundTint="?attr/colorPrimary"
+        app:tint="@android:color/white"
         app:useCompatPadding="true"
         app:srcCompat="@drawable/ic_vr_24px"/>
 

@@ -16,14 +16,17 @@
             android:id="@+id/progress_bar"
             android:layout_width="48dp"
             android:layout_height="48dp"
-            android:layout_marginStart="16dp"/>
+            android:layout_marginStart="16dp"
+            android:layout_marginBottom="16dp"/>
 
         <com.google.android.material.floatingactionbutton.FloatingActionButton
             android:id="@+id/enter_exit_vr"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="bottom|end"
+            android:visibility="gone"
             app:backgroundTint="?attr/colorPrimary"
+            app:tint="@android:color/white"
             app:useCompatPadding="true"
             app:srcCompat="@drawable/ic_vr_24px"
             android:contentDescription="@string/enter_vr_label"/>
