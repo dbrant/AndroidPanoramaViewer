@@ -25,11 +25,13 @@ android {
     defaultConfig {
         minSdkVersion 24
         targetSdkVersion 29
-        versionCode 3
+        versionCode 4
         versionName "1.0"
         vectorDrawables.useSupportLibrary true
 
         ndk {
+            // exclude native x86 libraries because the Google VR SDK doesn't provide 64-bit
+            // libraries, per their own requirement for publishing on the Play Store.
             abiFilters 'armeabi-v7a', 'arm64-v8a'
         }
     }
