@@ -24,9 +24,13 @@ import android.content.ComponentName;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
+import android.view.View;
+import android.widget.FrameLayout;
+
 import androidx.annotation.NonNull;
 import androidx.core.content.ContextCompat;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.view.ViewCompat;
 
 import com.dmitrybrant.photo360.rendering.Mesh;
 import com.google.vr.ndk.base.DaydreamApi;
@@ -43,6 +47,7 @@ import com.google.vr.ndk.base.DaydreamApi;
 public class MainActivity extends AppCompatActivity {
     private static final int READ_EXTERNAL_STORAGE_PERMISSION_ID = 1;
     private MonoscopicView mediaView;
+    private View vrButton;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -51,7 +56,17 @@ public class MainActivity extends AppCompatActivity {
 
         VideoUiView videoUi = findViewById(R.id.video_ui_view);
         videoUi.setVrIconClickListener(v -> startVrActivity());
-        findViewById(R.id.vr_fab).setOnClickListener(v -> startVrActivity());
+        vrButton = findViewById(R.id.vr_fab);
+        vrButton.setOnClickListener(v -> startVrActivity());
+
+        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.container_view), (v, insets) -> {
+            FrameLayout.LayoutParams params = (FrameLayout.LayoutParams) vrButton.getLayoutParams();
+            params.topMargin = insets.getSystemWindowInsetTop();
+            params.bottomMargin = insets.getSystemWindowInsetBottom();
+            params.leftMargin = insets.getSystemWindowInsetLeft();
+            params.rightMargin = insets.getSystemWindowInsetRight();
+            return insets.consumeSystemWindowInsets();
+        });
 
         mediaView = findViewById(R.id.media_view);
         mediaView.initialize(videoUi);
