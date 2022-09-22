@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.dmitrybrant.photo360">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
   <!-- The VR app is Daydream-only since it uses the controller. -->
   <uses-feature android:glEsVersion="0x00030002" android:required="true" />
