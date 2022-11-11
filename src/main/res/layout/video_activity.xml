@@ -27,6 +27,7 @@
         app:backgroundTint="?attr/colorPrimary"
         app:tint="@android:color/white"
         app:useCompatPadding="true"
-        app:srcCompat="@drawable/ic_vr_24px"/>
+        app:srcCompat="@drawable/ic_vr_24px"
+        android:contentDescription="@string/enter_vr_label" />
 
 </FrameLayout>
