@@ -18,18 +18,21 @@
  */
 package com.dmitrybrant.photo360
 
+import android.Manifest
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import android.widget.FrameLayout
 import androidx.core.content.ContextCompat
-import android.Manifest.permission
 import android.content.pm.PackageManager
 import com.google.vr.ndk.base.DaydreamApi
 import android.content.Intent
 import android.content.ComponentName
+import android.os.Build
 import android.view.View
+import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import com.dmitrybrant.photo360.rendering.Mesh
 
 /**
@@ -44,6 +47,14 @@ import com.dmitrybrant.photo360.rendering.Mesh
 class MainActivity : AppCompatActivity() {
     private lateinit var mediaView: MonoscopicView
     private lateinit var vrButton: View
+
+    private val requestPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted: Boolean ->
+        if (isGranted) {
+            mediaView.loadMedia(intent)
+        } else {
+            Toast.makeText(this, R.string.permission_warning, Toast.LENGTH_SHORT).show()
+        }
+    }
 
     public override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -67,15 +78,16 @@ class MainActivity : AppCompatActivity() {
         mediaView = findViewById(R.id.media_view)
         mediaView.initialize(videoUi)
 
-        // Boilerplate for checking runtime permissions in Android.
-        if (ContextCompat.checkSelfPermission(this, permission.READ_EXTERNAL_STORAGE)
-            != PackageManager.PERMISSION_GRANTED
-        ) {
-            // TODO: ask for permission when necessary.
-        }
+        checkReadPermissionThenOpen()
+    }
 
-        // Immediately pass the intent to the media loader.
-        mediaView.loadMedia(intent)
+    private fun checkReadPermissionThenOpen() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q &&
+            (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED)) {
+            requestPermissionLauncher.launch(Manifest.permission.READ_EXTERNAL_STORAGE)
+        } else {
+            mediaView.loadMedia(intent)
+        }
     }
 
     private fun startVrActivity() {
@@ -108,19 +120,6 @@ class MainActivity : AppCompatActivity() {
         finish()
     }
 
-    override fun onRequestPermissionsResult(
-        requestCode: Int,
-        permissions: Array<String>,
-        results: IntArray
-    ) {
-        super.onRequestPermissionsResult(requestCode, permissions, results)
-        if (requestCode == READ_EXTERNAL_STORAGE_PERMISSION_ID) {
-            if (results.size > 0 && results[0] == PackageManager.PERMISSION_GRANTED) {
-                // TODO
-            }
-        }
-    }
-
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
@@ -142,9 +141,5 @@ class MainActivity : AppCompatActivity() {
     override fun onDestroy() {
         mediaView.destroy()
         super.onDestroy()
-    }
-
-    companion object {
-        private const val READ_EXTERNAL_STORAGE_PERMISSION_ID = 1
     }
 }
