@@ -48,7 +48,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var mediaView: MonoscopicView
     private lateinit var vrButton: View
 
-    private val requestPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted: Boolean ->
+    private val requestPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
         if (isGranted) {
             mediaView.loadMedia(intent)
         } else {
@@ -66,7 +66,7 @@ class MainActivity : AppCompatActivity() {
         vrButton = findViewById(R.id.vr_fab)
         vrButton.setOnClickListener { startVrActivity() }
 
-        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.container_view)) { _: View?, insets: WindowInsetsCompat ->
+        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.container_view)) { _, insets ->
             val params = vrButton.layoutParams as FrameLayout.LayoutParams
             params.topMargin = insets.systemWindowInsetTop
             params.bottomMargin = insets.systemWindowInsetBottom
@@ -96,15 +96,9 @@ class MainActivity : AppCompatActivity() {
         val api = DaydreamApi.create(this)
         if (api != null) {
             // Launch the VR Activity with the proper intent.
-            val intent = DaydreamApi.createVrIntent(
-                ComponentName(this, VrActivity::class.java)
-            )
-            intent.data = getIntent().data
-            intent.putExtra(
-                MediaLoader.MEDIA_FORMAT_KEY,
-                getIntent().getIntExtra(MediaLoader.MEDIA_FORMAT_KEY, Mesh.MEDIA_MONOSCOPIC)
-            )
-            api.launchInVr(intent)
+            api.launchInVr(DaydreamApi.createVrIntent(ComponentName(this, VrActivity::class.java))
+                .setData(intent.data)
+                .putExtra(MediaLoader.MEDIA_FORMAT_KEY, intent.getIntExtra(MediaLoader.MEDIA_FORMAT_KEY, Mesh.MEDIA_MONOSCOPIC)))
             api.close()
         } else {
             // Fall back for devices that don't have Google VR Services. This flow should only
