@@ -3,7 +3,7 @@
   <string name="enter_vr_label">Enter VR mode</string>
   <string name="exit_vr_label">Exit VR mode</string>
   <string name="pause_label">Pause video</string>
-  <string name="permission_warning">This app will not run without permission to read from storage. Click to enable permission.</string>
+  <string name="permission_warning">This app will not run without permission to read from storage. Please enable permissions.</string>
   <string name="play_label">Play video</string>
   <string name="error_message">Error loading media.</string>
 </resources>
