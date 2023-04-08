@@ -17,7 +17,8 @@
       android:largeHeap="true"
       android:supportsRtl="true"
       android:usesCleartextTraffic="true"
-      android:theme="@style/AppTheme">
+      android:theme="@style/AppTheme"
+      android:icon="@drawable/icon">
     <!-- This is a 2D Version of the video player. -->
     <activity
         android:name=".MainActivity"
