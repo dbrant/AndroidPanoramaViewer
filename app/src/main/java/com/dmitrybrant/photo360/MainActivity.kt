@@ -22,7 +22,6 @@ import android.Manifest
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import androidx.core.view.ViewCompat
-import androidx.core.view.WindowInsetsCompat
 import android.widget.FrameLayout
 import androidx.core.content.ContextCompat
 import android.content.pm.PackageManager
@@ -30,9 +29,9 @@ import com.google.vr.ndk.base.DaydreamApi
 import android.content.Intent
 import android.content.ComponentName
 import android.os.Build
-import android.view.View
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
+import com.dmitrybrant.photo360.databinding.VideoActivityBinding
 import com.dmitrybrant.photo360.rendering.Mesh
 
 /**
@@ -45,12 +44,11 @@ import com.dmitrybrant.photo360.rendering.Mesh
  * how to load other media using a custom Intent, see [MediaLoader].
  */
 class MainActivity : AppCompatActivity() {
-    private lateinit var mediaView: MonoscopicView
-    private lateinit var vrButton: View
+    private lateinit var binding: VideoActivityBinding
 
     private val requestPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
         if (isGranted) {
-            mediaView.loadMedia(intent)
+            binding.mediaView.loadMedia(intent)
         } else {
             Toast.makeText(this, R.string.permission_warning, Toast.LENGTH_SHORT).show()
         }
@@ -58,16 +56,15 @@ class MainActivity : AppCompatActivity() {
 
     public override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.video_activity)
+        binding = VideoActivityBinding.inflate(layoutInflater)
+        setContentView(binding.root)
 
-        val videoUi = findViewById<VideoUiView>(R.id.video_ui_view)
-        videoUi.setVrIconClickListener { startVrActivity() }
+        binding.videoUiContainer.videoUiView.setVrIconClickListener { startVrActivity() }
 
-        vrButton = findViewById(R.id.vr_fab)
-        vrButton.setOnClickListener { startVrActivity() }
+        binding.vrFab.setOnClickListener { startVrActivity() }
 
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.container_view)) { _, insets ->
-            val params = vrButton.layoutParams as FrameLayout.LayoutParams
+            val params = binding.vrFab.layoutParams as FrameLayout.LayoutParams
             params.topMargin = insets.systemWindowInsetTop
             params.bottomMargin = insets.systemWindowInsetBottom
             params.leftMargin = insets.systemWindowInsetLeft
@@ -75,8 +72,7 @@ class MainActivity : AppCompatActivity() {
             insets.consumeSystemWindowInsets()
         }
 
-        mediaView = findViewById(R.id.media_view)
-        mediaView.initialize(videoUi)
+        binding.mediaView.initialize(binding.videoUiContainer.videoUiView)
 
         checkReadPermissionThenOpen()
     }
@@ -86,7 +82,7 @@ class MainActivity : AppCompatActivity() {
             (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED)) {
             requestPermissionLauncher.launch(Manifest.permission.READ_EXTERNAL_STORAGE)
         } else {
-            mediaView.loadMedia(intent)
+            binding.mediaView.loadMedia(intent)
         }
     }
 
@@ -122,18 +118,18 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
-        mediaView.onResume()
+        binding.mediaView.onResume()
     }
 
     override fun onPause() {
         // MonoscopicView is a GLSurfaceView so it needs to pause & resume rendering. It's also
         // important to pause MonoscopicView's sensors & the video player.
-        mediaView.onPause()
+        binding.mediaView.onPause()
         super.onPause()
     }
 
     override fun onDestroy() {
-        mediaView.destroy()
+        binding.mediaView.destroy()
         super.onDestroy()
     }
 }
