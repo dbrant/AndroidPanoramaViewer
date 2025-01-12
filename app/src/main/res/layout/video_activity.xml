@@ -31,4 +31,10 @@
         app:srcCompat="@drawable/ic_vr_24px"
         android:contentDescription="@string/enter_vr_label" />
 
+    <com.google.android.material.appbar.MaterialToolbar
+        android:id="@+id/mainToolbar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top" />
+
 </FrameLayout>

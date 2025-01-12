@@ -22,15 +22,18 @@ import android.Manifest
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import androidx.core.view.ViewCompat
-import android.widget.FrameLayout
 import androidx.core.content.ContextCompat
 import android.content.pm.PackageManager
 import com.google.vr.ndk.base.DaydreamApi
 import android.content.Intent
 import android.content.ComponentName
 import android.os.Build
+import android.view.ViewGroup
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.updateLayoutParams
+import androidx.core.view.updatePadding
 import com.dmitrybrant.photo360.databinding.VideoActivityBinding
 import com.dmitrybrant.photo360.rendering.Mesh
 
@@ -58,18 +61,24 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         binding = VideoActivityBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        setSupportActionBar(binding.mainToolbar)
 
         binding.videoUiContainer.videoUiView.setVrIconClickListener { startVrActivity() }
 
         binding.vrFab.setOnClickListener { startVrActivity() }
 
-        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.container_view)) { _, insets ->
-            val params = binding.vrFab.layoutParams as FrameLayout.LayoutParams
-            params.topMargin = insets.systemWindowInsetTop
-            params.bottomMargin = insets.systemWindowInsetBottom
-            params.leftMargin = insets.systemWindowInsetLeft
-            params.rightMargin = insets.systemWindowInsetRight
-            insets.consumeSystemWindowInsets()
+        ViewCompat.setOnApplyWindowInsetsListener(binding.root) { view, insets ->
+            val statusBarInsets = insets.getInsets(WindowInsetsCompat.Type.statusBars())
+            val navBarInsets = insets.getInsets(WindowInsetsCompat.Type.navigationBars())
+
+            binding.mainToolbar.updatePadding(top = statusBarInsets.top)
+            binding.vrFab.updateLayoutParams<ViewGroup.MarginLayoutParams> {
+                bottomMargin = navBarInsets.bottom
+                leftMargin = navBarInsets.left
+                rightMargin = navBarInsets.right
+            }
+
+            WindowInsetsCompat.CONSUMED
         }
 
         binding.mediaView.initialize(binding.videoUiContainer.videoUiView)
