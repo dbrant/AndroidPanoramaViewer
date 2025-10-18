@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 Dmitry Brant.
+ * Copyright 2022+ Dmitry Brant.
  *
  * Based loosely on the Google VR SDK sample apps.
  * Copyright 2017 Google Inc. All Rights Reserved.
