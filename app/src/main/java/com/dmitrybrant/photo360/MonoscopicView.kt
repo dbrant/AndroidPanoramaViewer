@@ -28,15 +28,11 @@ import android.opengl.Matrix
 import android.util.AttributeSet
 import android.view.MotionEvent
 import android.view.View
-import androidx.annotation.AnyThread
-import androidx.annotation.BinderThread
-import androidx.annotation.UiThread
 import com.dmitrybrant.photo360.rendering.SceneRenderer
 import com.google.vr.sdk.base.Eye
 import kotlinx.coroutines.CoroutineScope
 import javax.microedition.khronos.egl.EGLConfig
 import javax.microedition.khronos.opengles.GL10
-import kotlin.concurrent.Volatile
 import kotlin.math.cos
 import kotlin.math.max
 import kotlin.math.min
@@ -56,15 +52,14 @@ import kotlin.math.sin
  */
 class MonoscopicView(context: Context?, attributeSet: AttributeSet?) :
     GLSurfaceView(context, attributeSet) {
-    // We handle all the sensor orientation detection ourselves.
-    private var sensorManager: SensorManager? = null
-    private var orientationSensor: Sensor? = null
-    private var phoneOrientationListener: PhoneOrientationListener? = null
+    private lateinit var sensorManager: SensorManager
+    private lateinit var orientationSensor: Sensor
+    private lateinit var phoneOrientationListener: PhoneOrientationListener
 
-    private var mediaLoader: MediaLoader? = null
-    private var renderer: Renderer? = null
-    private var touchTracker: TouchTracker? = null
-    private var uiView: VideoUiView? = null
+    private lateinit var mediaLoader: MediaLoader
+    private lateinit var renderer: Renderer
+    private lateinit var touchTracker: TouchTracker
+    private lateinit var uiView: VideoUiView
 
     /** Inflates a standard GLSurfaceView.  */
     init {
@@ -81,7 +76,7 @@ class MonoscopicView(context: Context?, attributeSet: AttributeSet?) :
         mediaLoader = MediaLoader(context)
 
         // Configure OpenGL.
-        renderer = Renderer(uiView, mediaLoader!!)
+        renderer = Renderer(uiView, mediaLoader)
         setEGLContextClientVersion(2)
         setRenderer(renderer)
         renderMode = RENDERMODE_CONTINUOUSLY
@@ -92,10 +87,10 @@ class MonoscopicView(context: Context?, attributeSet: AttributeSet?) :
         // fusion. It's used instead of TYPE_ROTATION_VECTOR since the latter uses the mangetometer on
         // devices. When used indoors, the magnetometer can take some time to settle depending on the
         // device and amount of metal in the environment.
-        orientationSensor = sensorManager!!.getDefaultSensor(Sensor.TYPE_GAME_ROTATION_VECTOR)
+        orientationSensor = sensorManager.getDefaultSensor(Sensor.TYPE_GAME_ROTATION_VECTOR)!!
         phoneOrientationListener = PhoneOrientationListener()
 
-        touchTracker = TouchTracker(renderer!!)
+        touchTracker = TouchTracker(renderer)
         setOnTouchListener(touchTracker)
     }
 
@@ -103,28 +98,28 @@ class MonoscopicView(context: Context?, attributeSet: AttributeSet?) :
     override fun onResume() {
         super.onResume()
         // Use the fastest sensor readings.
-        sensorManager!!.registerListener(
+        sensorManager.registerListener(
             phoneOrientationListener, orientationSensor, SensorManager.SENSOR_DELAY_FASTEST
         )
-        mediaLoader!!.resume()
+        mediaLoader.resume()
     }
 
     /** Stops the sensors & video when the View is inactive to avoid wasting battery.  */
     override fun onPause() {
-        mediaLoader!!.pause()
-        sensorManager!!.unregisterListener(phoneOrientationListener)
+        mediaLoader.pause()
+        sensorManager.unregisterListener(phoneOrientationListener)
         super.onPause()
     }
 
     /** Destroys the underlying resources. If this is not called, the MediaLoader may leak.  */
     fun destroy() {
-        uiView!!.setMediaPlayer(null)
-        mediaLoader!!.destroy()
+        uiView.setMediaPlayer(null)
+        mediaLoader.destroy()
     }
 
     /** Parses the Intent and loads the appropriate media.  */
     fun loadMedia(intent: Intent, coroutineScope: CoroutineScope) {
-        mediaLoader!!.loadFromIntent(intent, coroutineScope, uiView!!)
+        mediaLoader.loadFromIntent(intent, coroutineScope, uiView)
     }
 
     /** Detects sensor events and saves them as a matrix.  */
@@ -133,7 +128,6 @@ class MonoscopicView(context: Context?, attributeSet: AttributeSet?) :
         private val remappedPhoneMatrix = FloatArray(16)
         private val angles = FloatArray(3)
 
-        @BinderThread
         override fun onSensorChanged(event: SensorEvent) {
             SensorManager.getRotationMatrixFromVector(phoneInWorldSpaceMatrix, event.values)
 
@@ -148,13 +142,13 @@ class MonoscopicView(context: Context?, attributeSet: AttributeSet?) :
             )
             SensorManager.getOrientation(remappedPhoneMatrix, angles)
             val roll = angles[2]
-            touchTracker!!.setRoll(roll)
+            touchTracker.setRoll(roll)
 
             // Rotate from Android coordinates to OpenGL coordinates. Android's coordinate system
             // assumes Y points North and Z points to the sky. OpenGL has Y pointing up and Z pointing
             // toward the user.
             Matrix.rotateM(phoneInWorldSpaceMatrix, 0, 90f, 1f, 0f, 0f)
-            renderer!!.setDeviceOrientation(phoneInWorldSpaceMatrix, roll)
+            renderer.setDeviceOrientation(phoneInWorldSpaceMatrix, roll)
         }
 
         override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
@@ -167,7 +161,6 @@ class MonoscopicView(context: Context?, attributeSet: AttributeSet?) :
 
         // The conversion from touch to yaw & pitch requires compensating for device roll. This is set
         // on the sensor thread and read on the UI thread.
-        @Volatile
         private var roll = 0f
 
         override fun onTouch(v: View?, event: MotionEvent): Boolean {
@@ -208,7 +201,6 @@ class MonoscopicView(context: Context?, attributeSet: AttributeSet?) :
             }
         }
 
-        @BinderThread
         fun setRoll(roll: Float) {
             // We compensate for roll by rotating in the opposite direction.
             this.roll = -roll
@@ -229,8 +221,7 @@ class MonoscopicView(context: Context?, attributeSet: AttributeSet?) :
      * Standard GL Renderer implementation. The notable code is the matrix multiplication in
      * onDrawFrame and updatePitchMatrix.
      */
-    internal class Renderer(uiView: VideoUiView?, mediaLoader: MediaLoader) :
-        GLSurfaceView.Renderer {
+    internal class Renderer(uiView: VideoUiView?, mediaLoader: MediaLoader) : GLSurfaceView.Renderer {
         private val scene: SceneRenderer = SceneRenderer.createFor2D()
 
         private val projectionMatrix = FloatArray(16)
@@ -298,8 +289,6 @@ class MonoscopicView(context: Context?, attributeSet: AttributeSet?) :
         }
 
         /** Adjusts the GL camera's rotation based on device rotation. Runs on the sensor thread.  */
-        @BinderThread
-        @Synchronized
         fun setDeviceOrientation(matrix: FloatArray, deviceRoll: Float) {
             System.arraycopy(matrix, 0, deviceOrientationMatrix, 0, deviceOrientationMatrix.size)
             this.deviceRoll = -deviceRoll
@@ -311,7 +300,6 @@ class MonoscopicView(context: Context?, attributeSet: AttributeSet?) :
          * is applied on an axis that is dependent on device rotation so this must be called after
          * either touch or sensor update.
          */
-        @AnyThread
         private fun updatePitchMatrix() {
             // The camera's pitch needs to be rotated along an axis that is parallel to the real world's
             // horizon. This is the <1, 0, 0> axis after compensating for the device's roll.
@@ -326,16 +314,12 @@ class MonoscopicView(context: Context?, attributeSet: AttributeSet?) :
         }
 
         /** Set the pitch offset matrix.  */
-        @UiThread
-        @Synchronized
         fun setPitchOffset(pitchDegrees: Float) {
             touchPitch = pitchDegrees
             updatePitchMatrix()
         }
 
         /** Set the yaw offset matrix.  */
-        @UiThread
-        @Synchronized
         fun setYawOffset(yawDegrees: Float) {
             Matrix.setRotateM(touchYawMatrix, 0, -yawDegrees, 0f, 1f, 0f)
         }

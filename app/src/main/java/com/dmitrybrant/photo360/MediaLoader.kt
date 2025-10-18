@@ -29,8 +29,6 @@ import android.graphics.Rect
 import android.media.MediaPlayer
 import android.view.Surface
 import android.widget.Toast
-import androidx.annotation.AnyThread
-import androidx.annotation.MainThread
 import com.dmitrybrant.photo360.rendering.Mesh
 import com.dmitrybrant.photo360.rendering.PhotoSphereTools
 import com.dmitrybrant.photo360.rendering.PhotoSphereTools.PhotoSphereData
@@ -102,7 +100,6 @@ class MediaLoader(private val context: Context) {
             )
 
             var stream: InputStream? = null
-            var response: Response? = null
             try {
                 val type = URLConnection.guessContentTypeFromName(uri.path)
                 if (type == null) {
@@ -110,6 +107,7 @@ class MediaLoader(private val context: Context) {
                 } else if (type.startsWith("image")) {
                     // TODO: figure out how to NOT need to read the whole file at once.
                     withContext(Dispatchers.IO) {
+                        var response: Response? = null
                         if ("http" == uri.scheme || "https" == uri.scheme) {
                             val client = OkHttpClient()
                             val request = Request.Builder().url(uri.toString()).build()
@@ -154,8 +152,6 @@ class MediaLoader(private val context: Context) {
         displayWhenReady()
     }
 
-    @AnyThread
-    @Synchronized
     private fun displayWhenReady() {
         if (isDestroyed) {
             // This only happens when the Activity is destroyed immediately after creation.
@@ -270,27 +266,18 @@ class MediaLoader(private val context: Context) {
         }
     }
 
-    @MainThread
-    @Synchronized
     fun pause() {
         if (mediaPlayer != null) {
             mediaPlayer!!.pause()
         }
     }
 
-    @MainThread
-    @Synchronized
     fun resume() {
         if (mediaPlayer != null) {
             mediaPlayer!!.start()
         }
     }
 
-    /**
-     * Tears down MediaLoader and prevents further work from happening.
-     */
-    @MainThread
-    @Synchronized
     fun destroy() {
         if (mediaPlayer != null) {
             mediaPlayer!!.stop()
