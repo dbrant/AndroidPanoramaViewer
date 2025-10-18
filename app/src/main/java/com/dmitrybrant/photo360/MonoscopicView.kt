@@ -33,6 +33,7 @@ import androidx.annotation.BinderThread
 import androidx.annotation.UiThread
 import com.dmitrybrant.photo360.rendering.SceneRenderer
 import com.google.vr.sdk.base.Eye
+import kotlinx.coroutines.CoroutineScope
 import javax.microedition.khronos.egl.EGLConfig
 import javax.microedition.khronos.opengles.GL10
 import kotlin.concurrent.Volatile
@@ -122,8 +123,8 @@ class MonoscopicView(context: Context?, attributeSet: AttributeSet?) :
     }
 
     /** Parses the Intent and loads the appropriate media.  */
-    fun loadMedia(intent: Intent?) {
-        mediaLoader!!.handleIntent(intent, uiView!!)
+    fun loadMedia(intent: Intent, coroutineScope: CoroutineScope) {
+        mediaLoader!!.loadFromIntent(intent, coroutineScope, uiView!!)
     }
 
     /** Detects sensor events and saves them as a matrix.  */

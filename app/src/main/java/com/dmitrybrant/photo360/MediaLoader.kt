@@ -27,8 +27,8 @@ import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Rect
 import android.media.MediaPlayer
-import android.os.AsyncTask
 import android.view.Surface
+import android.widget.Toast
 import androidx.annotation.AnyThread
 import androidx.annotation.MainThread
 import com.dmitrybrant.photo360.rendering.Mesh
@@ -40,11 +40,15 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.Response
 import java.io.ByteArrayInputStream
-import java.io.IOException
 import java.io.InputStream
 import java.net.URLConnection
 import java.security.InvalidParameterException
 import androidx.core.net.toUri
+import kotlinx.coroutines.CoroutineExceptionHandler
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class MediaLoader(private val context: Context) {
     // This can be replaced by any media player that renders to a Surface. In a real app, this
@@ -71,38 +75,19 @@ class MediaLoader(private val context: Context) {
     // The displaySurface is configured after both GL initialization and media loading.
     private var displaySurface: Surface? = null
 
-
-    fun handleIntent(intent: Intent?, uiView: VideoUiView) {
-        MediaLoaderTask(uiView).execute(intent)
-    }
-
-    /**
-     * Notifies MediaLoader that GL components have initialized.
-     */
-    fun onGlSceneReady(sceneRenderer: SceneRenderer?) {
-        this.sceneRenderer = sceneRenderer
-        displayWhenReady()
-    }
-
-
-    private inner class MediaLoaderTask(
-        private val uiView: VideoUiView
-    ) : AsyncTask<Intent?, Void?, Void?>() {
-
-        init {
+    fun loadFromIntent(intent: Intent, coroutineScope: CoroutineScope, uiView: VideoUiView) {
+        coroutineScope.launch (CoroutineExceptionHandler { _, throwable ->
+            throwable.printStackTrace()
+            Toast.makeText(context, throwable.message, Toast.LENGTH_SHORT).show()
+        }) {
             uiView.showProgressBar(true)
             uiView.showControls(false)
-        }
 
-        override fun doInBackground(vararg intent: Intent?): Void? {
             //String defaultUrl = "https://upload.wikimedia.org/wikipedia/commons/thumb/7/72/MK_30645-58_Stadtschloss_Wiesbaden.jpg/1280px-MK_30645-58_Stadtschloss_Wiesbaden.jpg";
             val defaultUrl = "http://rivendell.dmitrybrant.com/pano1.jpg"
 
-            val uri = intent[0]?.data ?: defaultUrl.toUri()
-            var stereoFormat = if (intent.isNotEmpty()) intent[0]!!.getIntExtra(
-                MEDIA_FORMAT_KEY, Mesh.MEDIA_MONOSCOPIC
-            ) else Mesh.MEDIA_MONOSCOPIC
-
+            val uri = intent.data ?: defaultUrl.toUri()
+            var stereoFormat = intent.getIntExtra(MEDIA_FORMAT_KEY, Mesh.MEDIA_MONOSCOPIC)
             if (stereoFormat != Mesh.MEDIA_STEREO_LEFT_RIGHT && stereoFormat != Mesh.MEDIA_STEREO_TOP_BOTTOM) {
                 stereoFormat = Mesh.MEDIA_MONOSCOPIC
             }
@@ -119,24 +104,24 @@ class MediaLoader(private val context: Context) {
             var stream: InputStream? = null
             var response: Response? = null
             try {
-                if ("http" == uri.scheme || "https" == uri.scheme) {
-                    val client = OkHttpClient()
-                    val request = Request.Builder().url(uri.toString()).build()
-                    response = client.newCall(request).execute()
-                }
-
                 val type = URLConnection.guessContentTypeFromName(uri.path)
                 if (type == null) {
                     throw InvalidParameterException("Unknown file type: $uri")
                 } else if (type.startsWith("image")) {
                     // TODO: figure out how to NOT need to read the whole file at once.
+                    withContext(Dispatchers.IO) {
+                        if ("http" == uri.scheme || "https" == uri.scheme) {
+                            val client = OkHttpClient()
+                            val request = Request.Builder().url(uri.toString()).build()
+                            response = client.newCall(request).execute()
+                        }
+                        val bytes = response!!.body.bytes()
+                        //stream = response.body().byteStream();
+                        stream = ByteArrayInputStream(bytes)
 
-                    val bytes = response!!.body.bytes()
-                    //stream = response.body().byteStream();
-                    stream = ByteArrayInputStream(bytes)
-
-                    mediaImage = BitmapFactory.decodeStream(stream)
-                    photoSphereData = PhotoSphereTools.getPhotoSphereData(bytes)
+                        mediaImage = BitmapFactory.decodeStream(stream)
+                        photoSphereData = PhotoSphereTools.getPhotoSphereData(bytes)
+                    }
                 } else if (type.startsWith("video")) {
                     val mp = MediaPlayer.create(context, uri)
                     synchronized(this@MediaLoader) {
@@ -144,19 +129,12 @@ class MediaLoader(private val context: Context) {
                         mediaPlayer = mp
                     }
                 }
-            } catch (e: IOException) {
-                e.printStackTrace()
-            } catch (e: InvalidParameterException) {
-                e.printStackTrace()
             } finally {
                 Utils.closeSilently(stream)
             }
 
             displayWhenReady()
-            return null
-        }
 
-        public override fun onPostExecute(unused: Void?) {
             uiView.showProgressBar(false)
             // Set or clear the UI's mediaPlayer on the UI thread.
             if (mediaPlayer != null) {
@@ -166,6 +144,14 @@ class MediaLoader(private val context: Context) {
                 uiView.showControls(false)
             }
         }
+    }
+
+    /**
+     * Notifies MediaLoader that GL components have initialized.
+     */
+    fun onGlSceneReady(sceneRenderer: SceneRenderer?) {
+        this.sceneRenderer = sceneRenderer
+        displayWhenReady()
     }
 
     @AnyThread

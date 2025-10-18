@@ -33,6 +33,7 @@ import com.google.vr.sdk.base.*
 import com.google.vr.sdk.base.GvrView.StereoRenderer
 import com.google.vr.sdk.controller.Controller
 import com.google.vr.sdk.controller.ControllerManager
+import kotlinx.coroutines.MainScope
 import javax.microedition.khronos.egl.EGLConfig
 
 /**
@@ -155,7 +156,7 @@ class VrActivity : GvrActivity() {
         if (ContextCompat.checkSelfPermission(this, permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED) {
             // TODO: handle permissions
         }
-        mediaLoader.handleIntent(intent, uiView)
+        mediaLoader.loadFromIntent(intent, MainScope(), uiView)
     }
 
     /**

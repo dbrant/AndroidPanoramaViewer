@@ -34,6 +34,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.updateLayoutParams
 import androidx.core.view.updatePadding
+import androidx.lifecycle.lifecycleScope
 import com.dmitrybrant.photo360.databinding.VideoActivityBinding
 import com.dmitrybrant.photo360.rendering.Mesh
 import kotlin.math.max
@@ -52,7 +53,7 @@ class MainActivity : AppCompatActivity() {
 
     private val requestPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
         if (isGranted) {
-            binding.mediaView.loadMedia(intent)
+            binding.mediaView.loadMedia(intent, lifecycleScope)
         } else {
             Toast.makeText(this, R.string.permission_warning, Toast.LENGTH_SHORT).show()
         }
@@ -94,7 +95,7 @@ class MainActivity : AppCompatActivity() {
             (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED)) {
             requestPermissionLauncher.launch(Manifest.permission.READ_EXTERNAL_STORAGE)
         } else {
-            binding.mediaView.loadMedia(intent)
+            binding.mediaView.loadMedia(intent, lifecycleScope)
         }
     }
 
