@@ -36,6 +36,7 @@ import androidx.core.view.updateLayoutParams
 import androidx.core.view.updatePadding
 import com.dmitrybrant.photo360.databinding.VideoActivityBinding
 import com.dmitrybrant.photo360.rendering.Mesh
+import kotlin.math.max
 
 /**
  * Basic Activity to hold [MonoscopicView] and render a 360 video in 2D.
@@ -68,17 +69,19 @@ class MainActivity : AppCompatActivity() {
         binding.vrFab.setOnClickListener { startVrActivity() }
 
         ViewCompat.setOnApplyWindowInsetsListener(binding.root) { view, insets ->
-            val statusBarInsets = insets.getInsets(WindowInsetsCompat.Type.statusBars())
-            val navBarInsets = insets.getInsets(WindowInsetsCompat.Type.navigationBars())
-
-            binding.mainToolbar.updatePadding(top = statusBarInsets.top)
+            val newStatusBarInsets = insets.getInsets(WindowInsetsCompat.Type.statusBars())
+            val newNavBarInsets = insets.getInsets(WindowInsetsCompat.Type.navigationBars())
+            val newCaptionBarInsets = insets.getInsets(WindowInsetsCompat.Type.captionBar())
+            val newSystemBarInsets = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            val topInset = max(max(max(newStatusBarInsets.top, newCaptionBarInsets.top), newSystemBarInsets.top), newNavBarInsets.top)
+            val bottomInset = max(max(max(newStatusBarInsets.bottom, newCaptionBarInsets.bottom), newSystemBarInsets.bottom), newNavBarInsets.bottom)
+            binding.mainToolbarContainer.updatePadding(top = topInset)
             binding.vrFab.updateLayoutParams<ViewGroup.MarginLayoutParams> {
-                bottomMargin = navBarInsets.bottom
-                leftMargin = navBarInsets.left
-                rightMargin = navBarInsets.right
+                bottomMargin = bottomInset
+                leftMargin = newNavBarInsets.left
+                rightMargin = newNavBarInsets.right
             }
-
-            WindowInsetsCompat.CONSUMED
+            insets
         }
 
         binding.mediaView.initialize(binding.videoUiContainer.videoUiView)
