@@ -3,17 +3,13 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 apply plugin: 'com.android.application'
 
 android {
-    compileSdk = 36
+    compileSdk = 37
     defaultConfig {
         applicationId "com.dmitrybrant.photo360"
         minSdk = 23
-        targetSdk = 36
+        targetSdk = 37
         versionCode = 5
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
-
-        ndk {
-            abiFilters 'armeabi-v7a', 'arm64-v8a'
-        }
     }
     buildFeatures {
         viewBinding true
@@ -25,8 +21,7 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
         release {
-            // Disable minify for now, until we remove the com.google.vr dependency.
-            minifyEnabled false
+            minifyEnabled true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
@@ -52,7 +47,7 @@ dependencies {
     implementation 'com.google.android.material:material:1.14.0'
     implementation 'androidx.activity:activity-ktx:1.13.0'
     implementation 'androidx.fragment:fragment-ktx:1.8.9'
-    implementation 'com.squareup.okhttp3:okhttp:5.3.2'
+    implementation 'com.squareup.okhttp3:okhttp:5.4.0'
 
     testImplementation 'junit:junit:4.13.2'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.7.0'
