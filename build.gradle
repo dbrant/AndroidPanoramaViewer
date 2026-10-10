@@ -1,19 +1,12 @@
 buildscript {
-    ext.kotlin_version = '2.4.20'
+    ext.kotlin_version = '2.4.21'
     repositories {
         google()
         mavenCentral()
     }
     dependencies {
-        classpath 'com.android.tools.build:gradle:9.3.1'
-        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
-        classpath 'com.google.protobuf:protobuf-gradle-plugin:0.10.0'
-    }
-}
-
-allprojects {
-    repositories {
-        google()
-        mavenCentral()
+        classpath libs.gradle
+        classpath libs.kotlin.gradle.plugin
+        classpath libs.protobuf.gradle.plugin
     }
 }
