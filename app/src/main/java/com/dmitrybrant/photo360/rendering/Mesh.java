@@ -18,7 +18,7 @@ package com.dmitrybrant.photo360.rendering;
 
 import android.opengl.GLES11Ext;
 import android.opengl.GLES20;
-import com.google.vr.sdk.base.Eye;
+import com.google.cardboard.sdk.CardboardView.Eye;
 import java.nio.FloatBuffer;
 
 import static com.dmitrybrant.photo360.rendering.Utils.checkGlError;
@@ -222,7 +222,7 @@ public final class Mesh {
    * Renders the mesh. This must be called on the GL thread.
    *
    * @param mvpMatrix The Model View Projection matrix.
-   * @param eyeType An {@link Eye.Type} value.
+   * @param eyeType An {@link Eye} type value.
    */
   /* package */ void glDraw(float[] mvpMatrix, int eyeType) {
     // Configure shader.
@@ -250,9 +250,9 @@ public final class Mesh {
         vertexBuffer);
     checkGlError();
 
-    // Load texture data. Eye.Type.RIGHT uses the left eye's data.
+    // Load texture data. Eye.RIGHT uses the right eye's data, and the other eyes use the left's.
     int textureOffset =
-        (eyeType == Eye.Type.RIGHT) ? POSITION_COORDS_PER_VERTEX + 2 : POSITION_COORDS_PER_VERTEX;
+        (eyeType == Eye.RIGHT) ? POSITION_COORDS_PER_VERTEX + 2 : POSITION_COORDS_PER_VERTEX;
     vertexBuffer.position(textureOffset);
     GLES20.glVertexAttribPointer(
         texCoordsHandle,

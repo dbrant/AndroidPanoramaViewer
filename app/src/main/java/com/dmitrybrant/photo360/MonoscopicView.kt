@@ -29,7 +29,7 @@ import android.util.AttributeSet
 import android.view.MotionEvent
 import android.view.View
 import com.dmitrybrant.photo360.rendering.SceneRenderer
-import com.google.vr.sdk.base.Eye
+import com.google.cardboard.sdk.CardboardView
 import kotlinx.coroutines.CoroutineScope
 import javax.microedition.khronos.egl.EGLConfig
 import javax.microedition.khronos.opengles.GL10
@@ -285,7 +285,7 @@ class MonoscopicView(context: Context?, attributeSet: AttributeSet?) :
             }
 
             Matrix.multiplyMM(viewProjectionMatrix, 0, projectionMatrix, 0, viewMatrix, 0)
-            scene.glDrawFrame(viewProjectionMatrix, Eye.Type.MONOCULAR)
+            scene.glDrawFrame(viewProjectionMatrix, CardboardView.Eye.MONOCULAR)
         }
 
         /** Adjusts the GL camera's rotation based on device rotation. Runs on the sensor thread.  */

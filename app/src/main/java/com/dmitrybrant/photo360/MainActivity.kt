@@ -24,9 +24,7 @@ import android.os.Bundle
 import androidx.core.view.ViewCompat
 import androidx.core.content.ContextCompat
 import android.content.pm.PackageManager
-import com.google.vr.ndk.base.DaydreamApi
 import android.content.Intent
-import android.content.ComponentName
 import android.os.Build
 import android.view.ViewGroup
 import android.widget.Toast
@@ -36,7 +34,6 @@ import androidx.core.view.updateLayoutParams
 import androidx.core.view.updatePadding
 import androidx.lifecycle.lifecycleScope
 import com.dmitrybrant.photo360.databinding.VideoActivityBinding
-import com.dmitrybrant.photo360.rendering.Mesh
 import kotlin.math.max
 
 /**
@@ -102,23 +99,12 @@ class MainActivity : AppCompatActivity() {
     private fun startVrActivity() {
         // Convert the Intent used to launch the 2D Activity into one that can launch the VR
         // Activity. This flow preserves the extras and data in the Intent.
-        val api = DaydreamApi.create(this)
-        if (api != null) {
-            // Launch the VR Activity with the proper intent.
-            api.launchInVr(DaydreamApi.createVrIntent(ComponentName(this, VrActivity::class.java))
-                .setData(intent.data)
-                .putExtra(MediaLoader.MEDIA_FORMAT_KEY, intent.getIntExtra(MediaLoader.MEDIA_FORMAT_KEY, Mesh.MEDIA_MONOSCOPIC)))
-            api.close()
-        } else {
-            // Fall back for devices that don't have Google VR Services. This flow should only
-            // be used for older Cardboard devices.
-            val intent = Intent(intent).setClass(this, VrActivity::class.java)
-            intent.removeCategory(Intent.CATEGORY_LAUNCHER)
-            intent.flags = 0 // Clear any flags from the previous intent.
-            startActivity(intent)
-        }
+        val intent = Intent(intent).setClass(this, VrActivity::class.java)
+        intent.removeCategory(Intent.CATEGORY_LAUNCHER)
+        intent.flags = 0 // Clear any flags from the previous intent.
+        startActivity(intent)
 
-        // See VrVideoActivity's launch2dActivity() for more info about why this finish() call
+        // See VrActivity's launch2dActivity() for more info about why this finish() call
         // may be required.
         finish()
     }

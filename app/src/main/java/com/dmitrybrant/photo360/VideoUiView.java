@@ -48,7 +48,7 @@ import com.dmitrybrant.photo360.rendering.CanvasQuad;
  * <p>For 2D Activities, this View behaves like any other Android View. It receives events from the
  * media player, updates the UI, and forwards user input to the appropriate component. In VR
  * Activities, this View uses standard Android APIs to render its child Views to a texture that is
- * displayed in VR. It also receives events from the Daydream Controller and forwards them to its
+ * displayed in VR. It also receives events from the Cardboard trigger and forwards them to its
  * child views.
  */
 public class VideoUiView extends LinearLayout {
@@ -145,7 +145,7 @@ public class VideoUiView extends LinearLayout {
     @Override
     public boolean onTouchEvent(MotionEvent event) {
         if (canvasQuad != null) {
-            // In VR mode so process controller events & ignore touchscreen events.
+            // In VR mode so process synthetic click events & ignore touchscreen events.
             if (event.getSource() != InputDevice.SOURCE_GAMEPAD) {
                 // Tell the system that we handled the event. This prevents children from seeing the event.
                 return true;

@@ -18,16 +18,15 @@ package com.dmitrybrant.photo360.rendering;
 
 import android.opengl.GLES20;
 import android.opengl.Matrix;
-import com.google.vr.sdk.controller.Orientation;
 import java.nio.FloatBuffer;
 
 import static com.dmitrybrant.photo360.rendering.Utils.checkGlError;
 
 /**
- * Renders a reticle in VR for the Daydream Controller.
+ * Renders a gaze reticle in VR.
  *
  * <p>This is a minimal example that renders a circle at 1 meter from the user based on the rotation
- * of the controller.
+ * of the user's head.
  */
 final class Reticle {
   // The reticle quad is 2 * SIZE units.
@@ -102,7 +101,7 @@ final class Reticle {
    * Renders the reticle.
    *
    * @param viewProjectionMatrix Scene's view projection matrix.
-   * @param orientation Rotation matrix derived from {@link Orientation#toRotationMatrix(float[])}.
+   * @param orientation Rotation matrix of the head's orientation in world space.
    */
   public void glDraw(float[] viewProjectionMatrix, float[] orientation) {
     // Configure shader.

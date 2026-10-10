@@ -24,7 +24,6 @@ import android.opengl.GLES11Ext;
 import android.opengl.GLES20;
 import android.view.Surface;
 import android.widget.FrameLayout;
-import com.google.vr.sdk.controller.Orientation;
 import java.nio.FloatBuffer;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -238,33 +237,36 @@ public class CanvasQuad {
   }
 
   /**
-   * Translates a Daydream Controller Orientation into a Point that can be passed to Android's
-   * click handling system.
+   * Translates the direction that the user is looking in into a Point that can be passed to
+   * Android's click handling system.
    *
    * <p>This is a minimal hit detection system that works for this quad because
    * it has no model matrix. All the math is based on the fact that its size & distance are
    * hard-coded into this class. For a more complex 3D mesh, a general bounding box & ray collision
    * system would be required.
    *
-   * @param orientation a {@link com.google.vr.sdk.controller.Controller}'s {@link Orientation}.
+   * @param direction the gaze direction in world space, as an (x, y, z) vector.
    */
-  /* package */ static PointF translateClick(Orientation orientation) {
-    float[] angles = orientation.toYawPitchRollRadians(new float[3]);
+  /* package */ static PointF translateClick(float[] direction) {
+    // Convert the direction to polar coordinates, where yaw is positive to the left and pitch is
+    // positive upward.
+    float yaw = (float) Math.atan2(-direction[0], -direction[2]);
+    float pitch = (float) Math.atan2(direction[1], Math.hypot(direction[0], direction[2]));
     // Make a rough guess of the bounds of the Quad in polar coordinates. This works as long as the
     // Quad isn't too large.
     float horizontalHalfAngle = (float) Math.atan2(WIDTH / 2, DISTANCE);
     float verticleHalfAngle = (float) Math.atan2(HEIGHT / 2, DISTANCE);
 
-    if (angles[1] < -verticleHalfAngle || angles[1] > verticleHalfAngle
-        || angles[0] < -horizontalHalfAngle || angles[0] > horizontalHalfAngle) {
+    if (pitch < -verticleHalfAngle || pitch > verticleHalfAngle
+        || yaw < -horizontalHalfAngle || yaw > horizontalHalfAngle) {
       // Click is outside of the quad.
       return null;
     }
 
-    // Convert from the polar coordinates of the controller to the rectangular coordinates of the
+    // Convert from the polar coordinates of the gaze to the rectangular coordinates of the
     // View. Note the negative yaw & pitch used to generate Android-compliant x & y coordinates.
-    float xPercent = (horizontalHalfAngle - angles[0]) / (2 * horizontalHalfAngle);
-    float yPercent = (verticleHalfAngle - angles[1]) / (2 * verticleHalfAngle);
+    float xPercent = (horizontalHalfAngle - yaw) / (2 * horizontalHalfAngle);
+    float yPercent = (verticleHalfAngle - pitch) / (2 * verticleHalfAngle);
     float xPx = xPercent * WIDTH * PX_PER_UNIT;
     float yPx = yPercent * HEIGHT * PX_PER_UNIT;
 

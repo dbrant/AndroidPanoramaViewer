@@ -21,29 +21,33 @@ package com.dmitrybrant.photo360
 import android.Manifest.permission
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.opengl.GLES20
 import android.opengl.Matrix
+import android.os.Build
 import android.os.Bundle
-import android.util.Log
 import android.view.ViewGroup
+import android.view.WindowManager
 import androidx.annotation.MainThread
+import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import com.dmitrybrant.photo360.rendering.SceneRenderer
-import com.google.vr.ndk.base.DaydreamApi
-import com.google.vr.sdk.base.*
-import com.google.vr.sdk.base.GvrView.StereoRenderer
-import com.google.vr.sdk.controller.Controller
-import com.google.vr.sdk.controller.ControllerManager
+import com.google.cardboard.sdk.CardboardView
+import com.google.cardboard.sdk.HeadTransform
+import com.google.cardboard.sdk.Viewport
 import kotlinx.coroutines.MainScope
 import javax.microedition.khronos.egl.EGLConfig
 
 /**
- * GVR Activity demonstrating a 360 video player.
+ * Cardboard Activity demonstrating a 360 video player.
  *
  * The default intent for this Activity will load a 360 placeholder panorama. For more options on
  * how to load other media using a custom Intent, see [MediaLoader].
  */
-class VrActivity : GvrActivity() {
-    private lateinit var gvrView: GvrView
+class VrActivity : AppCompatActivity() {
+    private lateinit var cardboardView: CardboardView
     private lateinit var renderer: Renderer
 
     // Displays the controls for video playback.
@@ -51,10 +55,6 @@ class VrActivity : GvrActivity() {
 
     // Given an intent with a media file and format, this will load the file and generate the mesh.
     private lateinit var mediaLoader: MediaLoader
-
-    // Interfaces with the Daydream controller.
-    private lateinit var controllerManager: ControllerManager
-    private lateinit var controller: Controller
 
     /**
      * Configures the VR system.
@@ -64,41 +64,38 @@ class VrActivity : GvrActivity() {
     public override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         mediaLoader = MediaLoader(this)
-        gvrView = GvrView(this)
-        // Since the videos have fewer pixels per degree than the phones, reducing the render target
-        // scaling factor reduces the work required to render the scene. This factor can be adjusted at
-        // runtime depending on the resolution of the loaded video.
-        // You can use Eye.getViewport() in the overridden onDrawEye() method to determine the current
-        // render target size in pixels.
-        gvrView.setRenderTargetScale(.5f)
+        cardboardView = CardboardView(this)
 
-        // Standard GvrView configuration
-        renderer = Renderer(gvrView)
-        gvrView.setEGLConfigChooser(
+        // Use the whole screen, without the system bars, and keep it on.
+        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            window.attributes.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+        }
+        WindowCompat.getInsetsController(window, window.decorView).apply {
+            hide(WindowInsetsCompat.Type.systemBars())
+            systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+        }
+
+        // Standard CardboardView configuration
+        renderer = Renderer(cardboardView)
+        cardboardView.setEGLConfigChooser(
             8, 8, 8, 8,  // RGBA bits.
             16,  // Depth bits.
             0
         ) // Stencil bits.
-        gvrView.setRenderer(renderer)
-        setContentView(gvrView)
-
-        // Most Daydream phones can render a 4k video at 60fps in sustained performance mode. These
-        // options can be tweaked along with the render target scale.
-        if (gvrView.setAsyncReprojectionEnabled(true)) {
-            AndroidCompat.setSustainedPerformanceMode(this, true)
-        }
+        cardboardView.setRenderer(renderer)
+        cardboardView.setStereoRenderMode(true)
+        setContentView(cardboardView)
 
         // Handle the user clicking on the 'X' in the top left corner. Since this is done when the user
-        // has taken the headset out of VR, it should launch the app's exit flow directly rather than
-        // using the transition flow.
-        gvrView.setOnCloseButtonListener { launch2dActivity() }
+        // has taken the headset out of VR, it should launch the app's exit flow directly.
+        cardboardView.setOnBackButtonClick { launch2dActivity() }
+        cardboardView.setOnSettingsButtonClick { cardboardView.scanViewerQrCode() }
 
-        // Configure Controller.
-        val listener = ControllerEventListener()
-        controllerManager = ControllerManager(this, listener)
-        controller = controllerManager.controller
-        controller.setEventListener(listener)
-        // controller.start() is called in onResume().
+        // Cardboard viewers have no controller, so the viewer's trigger (or a tap on the screen)
+        // clicks on whatever the user is looking at.
+        cardboardView.setOnTriggerEvent { renderer.scene.handleClick() }
+
         checkPermissionAndInitialize()
     }
 
@@ -132,24 +129,6 @@ class VrActivity : GvrActivity() {
     }
 
     /**
-     * Tries to exit gracefully from VR using a VR transition dialog.
-     *
-     * @return whether the exit request has started or whether the request failed due to the device
-     * not being Daydream Ready
-     */
-    private fun exitFromVr(): Boolean {
-        // This needs to use GVR's exit transition to avoid disorienting the user.
-        val api = DaydreamApi.create(this)
-        if (api != null) {
-            api.exitFromVr(this, EXIT_FROM_VR_REQUEST_CODE, null)
-            // Eventually, the Activity's onActivityResult will be called.
-            api.close()
-            return true
-        }
-        return false
-    }
-
-    /**
      * Initializes the Activity only if the permission has been granted.
      */
     private fun checkPermissionAndInitialize() {
@@ -159,71 +138,64 @@ class VrActivity : GvrActivity() {
         mediaLoader.loadFromIntent(intent, MainScope(), uiView)
     }
 
-    /**
-     * Handles the result from [DaydreamApi.exitFromVr]. This is called
-     * via the uiView.setVrIconClickListener listener below.
-     *
-     * @param requestCode matches the parameter to exitFromVr()
-     * @param resultCode  whether the user accepted the exit request or canceled
-     */
-    override fun onActivityResult(requestCode: Int, resultCode: Int, unused: Intent) {
-        if (requestCode == EXIT_FROM_VR_REQUEST_CODE && resultCode == RESULT_OK) {
-            launch2dActivity()
-        } else {
-            // This should contain a VR UI to handle the user declining the exit request.
-            Log.e(TAG, "Declining the exit request isn't implemented in this sample.")
-        }
-    }
-
     override fun onResume() {
         super.onResume()
-        controllerManager.start()
+        cardboardView.onResume()
         mediaLoader.resume()
     }
 
     override fun onPause() {
         mediaLoader.pause()
-        controllerManager.stop()
+        cardboardView.onPause()
         super.onPause()
     }
 
     override fun onDestroy() {
         mediaLoader.destroy()
         uiView.setMediaPlayer(null)
+        cardboardView.onDestroy()
         super.onDestroy()
     }
 
     /**
-     * Standard GVR renderer. Most of the real work is done by [SceneRenderer].
+     * Standard Cardboard renderer. Most of the real work is done by [SceneRenderer].
      */
-    private inner class Renderer @MainThread constructor(parent: ViewGroup?) : StereoRenderer {
-        // Used by ControllerEventListener to manipulate the scene.
+    private inner class Renderer @MainThread constructor(parent: ViewGroup?) : CardboardView.Renderer {
+        // Used by the trigger event handler to manipulate the scene.
         val scene: SceneRenderer
+        private val headView = FloatArray(16)
         private val viewProjectionMatrix = FloatArray(16)
+        private val eyeViewport = IntArray(4)
 
         init {
             val pair = SceneRenderer.createForVR(this@VrActivity, parent)
             scene = pair.first
             uiView = pair.second
-            uiView.setVrIconClickListener {
-                if (!exitFromVr()) {
-                    // Directly exit Cardboard Activities.
-                    onActivityResult(EXIT_FROM_VR_REQUEST_CODE, RESULT_OK, Intent())
-                }
-            }
+            uiView.setVrIconClickListener { launch2dActivity() }
         }
 
-        override fun onNewFrame(headTransform: HeadTransform) {}
-        override fun onDrawEye(eye: Eye) {
+        override fun onNewFrame(headTransform: HeadTransform) {
+            headTransform.getHeadView(headView, 0)
+            scene.setHeadView(headView)
+        }
+
+        override fun onDrawEye(eye: CardboardView.Eye) {
+            // CardboardView draws both eyes into the same framebuffer, so restrict drawing (including
+            // the glClear in SceneRenderer) to this eye's viewport.
+            GLES20.glGetIntegerv(GLES20.GL_VIEWPORT, eyeViewport, 0)
+            GLES20.glEnable(GLES20.GL_SCISSOR_TEST)
+            GLES20.glScissor(eyeViewport[0], eyeViewport[1], eyeViewport[2], eyeViewport[3])
+
+            eye.applyHeadView(headView)
             Matrix.multiplyMM(
                 viewProjectionMatrix,
                 0,
-                eye.getPerspective(Companion.Z_NEAR, Companion.Z_FAR),
+                eye.getPerspective(Z_NEAR, Z_FAR),
                 0,
                 eye.eyeView,
                 0
             )
-            scene.glDrawFrame(viewProjectionMatrix, eye.type)
+            scene.glDrawFrame(viewProjectionMatrix, eye.eyeType)
         }
 
         override fun onFinishFrame(viewport: Viewport) {}
@@ -238,36 +210,7 @@ class VrActivity : GvrActivity() {
         }
     }
 
-    /**
-     * Forwards Controller events to SceneRenderer.
-     */
-    private inner class ControllerEventListener : Controller.EventListener(),
-        ControllerManager.EventListener {
-        private var touchpadDown = false
-        private var appButtonDown = false
-        override fun onApiStatusChanged(status: Int) {
-            Log.i(TAG, ".onApiStatusChanged $status")
-        }
-
-        override fun onRecentered() {}
-        override fun onUpdate() {
-            controller.update()
-            renderer.scene.setControllerOrientation(controller.orientation)
-            if (!touchpadDown && controller.clickButtonState) {
-                renderer.scene.handleClick()
-            }
-            if (!appButtonDown && controller.appButtonState) {
-                renderer.scene.toggleUi()
-            }
-            touchpadDown = controller.clickButtonState
-            appButtonDown = controller.appButtonState
-        }
-    }
-
     companion object {
-        private const val TAG = "VrVideoActivity"
-        private const val EXIT_FROM_VR_REQUEST_CODE = 42
-
         private const val Z_NEAR = .1f
         private const val Z_FAR = 100f
     }

@@ -29,7 +29,6 @@ import android.os.Handler;
 import android.os.Looper;
 import android.os.SystemClock;
 import androidx.annotation.AnyThread;
-import androidx.annotation.BinderThread;
 import androidx.annotation.MainThread;
 import androidx.annotation.Nullable;
 import android.util.Log;
@@ -40,7 +39,6 @@ import android.view.Surface;
 import android.view.ViewGroup;
 
 import com.dmitrybrant.photo360.VideoUiView;
-import com.google.vr.sdk.controller.Orientation;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static com.dmitrybrant.photo360.rendering.Utils.checkGlError;
@@ -48,9 +46,9 @@ import static com.dmitrybrant.photo360.rendering.Utils.checkGlError;
 /**
  * Controls and renders the GL Scene.
  *
- * <p>This class is shared between MonoscopicView & VrVideoActivity. It renders the display mesh, UI
- * and controller reticle as required. It also has basic Controller input which allows the user to
- * interact with {@link VideoUiView} while in VR.
+ * <p>This class is shared between MonoscopicView & VrActivity. It renders the display mesh, UI
+ * and gaze reticle as required. It also has basic gaze input which allows the user to interact
+ * with {@link VideoUiView} while in VR.
  */
 public final class SceneRenderer {
   private static final String TAG = "SceneRenderer";
@@ -79,12 +77,13 @@ public final class SceneRenderer {
   @Nullable
   private final Handler uiHandler;
 
-  // Controller components.
+  // Gaze components. The reticle is drawn where the user is looking, and clicks are aimed there.
   private final Reticle reticle = new Reticle();
-  @Nullable
-  private Orientation controllerOrientation;
-  // This is accessed on the binder & GL Threads.
-  private final float[] controllerOrientationMatrix = new float[16];
+  // The rotation from head space to world space. This is set on the GL Thread, and read on the GL
+  // & main Threads.
+  private final float[] headOrientationMatrix = new float[16];
+  // The direction that the user looks in, in head space.
+  private static final float[] FORWARD_VECTOR = {0, 0, -1, 0};
 
   /**
    * Constructs the SceneRenderer with the given values.
@@ -140,11 +139,7 @@ public final class SceneRenderer {
    */
   public void glInit() {
     checkGlError();
-    Matrix.setIdentityM(controllerOrientationMatrix, 0);
-
-    // Set the background frame color. This is only visible if the display mesh isn't a full sphere.
-    GLES20.glClearColor(0.5f, 0.5f, 0.5f, 1.0f);
-    checkGlError();
+    Matrix.setIdentityM(headOrientationMatrix, 0);
 
     // Create the texture used to render each frame of video.
     displayTexId = Utils.glCreateExternalTexture();
@@ -230,7 +225,7 @@ public final class SceneRenderer {
    * Draws the scene with a given eye pose and type.
    *
    * @param viewProjectionMatrix 16 element GL matrix.
-   * @param eyeType an {@link com.google.vr.sdk.base.Eye.Type} value
+   * @param eyeType a {@link com.google.cardboard.sdk.CardboardView.Eye} type value
    */
   public void glDrawFrame(float[] viewProjectionMatrix, int eyeType) {
     if (!glConfigureScene()) {
@@ -238,6 +233,9 @@ public final class SceneRenderer {
       return;
     }
 
+    // Set the background frame color. This is only visible if the display mesh isn't a full sphere.
+    // It's set for each frame because, in VR, the Cardboard SDK's distortion pass changes it.
+    GLES20.glClearColor(0.5f, 0.5f, 0.5f, 1.0f);
     // glClear isn't strictly necessary when rendering fully spherical panoramas, but it can improve
     // performance on tiled renderers by causing the GPU to discard previous data.
     GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT);
@@ -257,7 +255,7 @@ public final class SceneRenderer {
       canvasQuad.glDraw(viewProjectionMatrix, videoUiView.getAlpha());
     }
 
-    reticle.glDraw(viewProjectionMatrix, controllerOrientationMatrix);
+    reticle.glDraw(viewProjectionMatrix, headOrientationMatrix);
   }
 
   /** Cleans up the GL resources. */
@@ -271,20 +269,23 @@ public final class SceneRenderer {
     reticle.glShutdown();
   }
 
-  /** Updates the Reticle's position with the latest Controller pose. */
-  @BinderThread
-  public synchronized void setControllerOrientation(Orientation currentOrientation) {
-    this.controllerOrientation = currentOrientation;
-    controllerOrientation.toRotationMatrix(controllerOrientationMatrix);
+  /**
+   * Updates the Reticle's position and the gaze direction with the latest head pose.
+   *
+   * @param headView the head's view matrix, which transforms from world space to head space.
+   */
+  @AnyThread
+  public synchronized void setHeadView(float[] headView) {
+    Matrix.invertM(headOrientationMatrix, 0, headView, 0);
   }
 
   /**
-   * Processes Daydream Controller clicks and dispatches the event to {@link VideoUiView} as a
-   * synthetic {@link MotionEvent}.
+   * Processes Cardboard trigger clicks and dispatches the event to {@link VideoUiView} as a
+   * synthetic {@link MotionEvent}, at the point that the user is looking at.
    *
    * <p>This is a minimal input system that works because CanvasQuad is a simple rectangle with a
    * hardcoded location. If the quad had a transformation matrix, then those transformations would
-   * need to be used when converting from the Controller's pose to a 2D click event.
+   * need to be used when converting from the head pose to a 2D click event.
    */
   @MainThread
   public void handleClick() {
@@ -294,12 +295,12 @@ public final class SceneRenderer {
       return;
     }
 
-    if (controllerOrientation == null) {
-      // Race condition between click & pose events.
-      return;
+    final float[] gazeDirection = new float[4];
+    synchronized (this) {
+      Matrix.multiplyMV(gazeDirection, 0, headOrientationMatrix, 0, FORWARD_VECTOR, 0);
     }
 
-    final PointF clickTarget = CanvasQuad.translateClick(controllerOrientation);
+    final PointF clickTarget = CanvasQuad.translateClick(gazeDirection);
     if (clickTarget == null) {
       // When the click is outside of the View, hide the UI.
       toggleUi();
@@ -332,7 +333,7 @@ public final class SceneRenderer {
   /** Uses Android's animation system to fade in/out when the user wants to show/hide the UI. */
   @AnyThread
   public void toggleUi() {
-    // This can be triggered via a controller action so switch to main thread to manipulate the View.
+    // This can be triggered from any thread so switch to main thread to manipulate the View.
     uiHandler.post(() -> {
       if (videoUiView.getAlpha() == 0) {
         videoUiView.animate().alpha(1).start();
