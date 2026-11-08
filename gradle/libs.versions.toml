@@ -7,7 +7,7 @@ gradle-toolchains-foojay-resolver-convention = "1.0.0"
 junit = "4.13.2"
 kotlin = "2.4.21"
 material = "1.14.0"
-okhttp = "5.5.0"
+okhttp = "5.5.1"
 protobuf-gradle-plugin = "0.10.1"
 
 [libraries]
